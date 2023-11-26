@@ -7,7 +7,6 @@ import requests
 import json
 from langdetect import detect
 from pdf2image import convert_from_bytes
-import pytesseract
 from PIL import Image
 import logging
 
@@ -30,6 +29,21 @@ site_list = [
     "https://www.bde.es/wbe/en/noticias-eventos/otras-instituciones/autoridad-bancaria-europea-eba/",
 ]
 
+headers = {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Sec-Ch-Ua": '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "X-Amzn-Trace-Id": "Root=1-6563ac04-59e8d3725755f0b33d81e17d",
+}
 
 #### JSON FORMAT ####
 query_start_date = ""
@@ -78,7 +92,7 @@ def initial_json():
 def get_pdf_url(article):
     try:
         article_url = article.find("a").get("href")
-        article_response = requests.get(base_url + article_url)
+        article_response = requests.get(base_url + article_url, headers=headers)
         article_soup = BeautifulSoup(article_response.content, "html.parser")
         pdf_url = (
             article_soup.find(class_="block-entry-content__file__title")
@@ -102,7 +116,7 @@ def extract_pdf(article):
     try:
         pdf_url = get_pdf_url(article)
         print(pdf_url)
-        pdf = requests.get(pdf_url)
+        pdf = requests.get(pdf_url, headers=headers)
         origin_text = ""
         if pdf.ok:
             logging.info(f"DOWNLOAD SUCCESS URL {pdf_url}")
@@ -172,7 +186,7 @@ def generate_json():
 
 
 def set_url_params(page, start, end, site_url):
-    url = f"{site_url}?page={str(page)}&start=start&end={end}&sort=DESC"
+    url = f"{site_url}?page={str(page)}&start={start}&end={end}&sort=DESC"
     print("URL:", url)
     return url
 
@@ -191,7 +205,7 @@ def run_scrape(start, end, document_types):
     result["metadata"]["query_end_date"] = end
 
     response = requests.get(
-        set_url_params(1, convert_date(start), convert_date(end), site_url)
+        set_url_params(1, convert_date(start), convert_date(end), site_url), headers=headers
     )
     if response.status_code == 200:
         logging.info(
@@ -207,7 +221,7 @@ def run_scrape(start, end, document_types):
         print(page_count)
         for page in range(1, page_count + 1):
             response = requests.get(
-                set_url_params(page, convert_date(start), convert_date(end), site_url)
+                set_url_params(page, convert_date(start), convert_date(end), site_url), headers=headers
             )
             if response.status_code == 200:
                 logging.info(
